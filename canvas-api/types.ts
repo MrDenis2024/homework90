@@ -6,5 +6,5 @@ export interface Pixel {
 
 export interface IncomingMessage {
   type: string;
-  payload: Pixel;
+  payload: Pixel[];
 }

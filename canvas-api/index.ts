@@ -27,7 +27,7 @@ router.ws('/canvas', (ws, req) => {
 
       if(decodedMessage.type === 'DRAW') {
         const newPixel = decodedMessage.payload;
-        pixels.push(newPixel);
+        pixels.push(...newPixel);
         connectedClients.forEach((clientWs) => {
           clientWs.send(JSON.stringify({
             type: 'NEW_DRAW',
