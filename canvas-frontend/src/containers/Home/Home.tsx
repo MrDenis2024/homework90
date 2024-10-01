@@ -1,8 +1,9 @@
-import React, {useRef, useState} from 'react';
-import {Draw} from '../../types.ts';
+import React, {useEffect, useRef, useState} from 'react';
+import {Draw, IncomingDraw} from '../../types.ts';
 
 const Home = () => {
   const [draws, setDraws] = useState<Draw[]>([]);
+  const ws = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [color, serColor] = useState('#000000');
   const [isDrawing, setIsDrawing] = useState(false);
@@ -17,13 +18,31 @@ const Home = () => {
     }
   };
 
+  useEffect(() => {
+    ws.current = new WebSocket('ws://localhost:8000/canvas');
+
+    ws.current.onmessage = (event) => {
+      const decodedDraw = JSON.parse(event.data) as IncomingDraw;
+
+      if (decodedDraw.type === 'INIT' || decodedDraw.type === 'NEW_DRAW') {
+        decodedDraw.payload.forEach((draw) => {
+          drawCircle(draw.x, draw.y, draw.color);
+        });
+      }
+    };
+
+    return () => {
+      ws.current?.close();
+    };
+  }, []);
+
   const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const x = event.pageX - canvas.offsetLeft;
-    const y = event.pageY - canvas.offsetTop;
+    const x = event.clientX - canvas.offsetLeft;
+    const y = event.clientY - canvas.offsetTop;
     setDraws((prevState) => [...prevState, {x, y, color}]);
 
     drawCircle(x, y, color);
@@ -33,14 +52,16 @@ const Home = () => {
     const canvas = canvasRef.current;
     if (!canvas || !isDrawing) return;
 
-    const x = event.pageX - canvas.offsetLeft;
-    const y = event.pageY - canvas.offsetTop;
+    const x = event.clientX - canvas.offsetLeft;
+    const y = event.clientY - canvas.offsetTop;
     setDraws((prevState) => [...prevState, {x, y, color}]);
 
     drawCircle(x, y, color);
   };
 
   const handleMouseUp = () => {
+    if(!ws.current) return;
+    ws.current.send(JSON.stringify({ type: 'DRAW', payload: draws }));
     setIsDrawing(false);
     setDraws([]);
   };
